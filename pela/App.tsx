@@ -6,6 +6,7 @@ import { NowPlaying } from './components/NowPlaying';
 import { QueueItem } from './components/QueueItem';
 import { AddSongSheet } from './components/AddSongSheet';
 import { VenueAdmin } from './components/VenueAdmin';
+import AdminBar from "./components/AdminBar";
 import { 
   fetchQueue, 
   fetchNowPlaying, 
@@ -29,11 +30,42 @@ interface NowPlayingData {
   albumArt: string;
 }
 
-// Get venue ID from URL parameter, or use demo
+
+export default function App() {
+  const [venueId] = useState(getVenueId());
+  const [showAdmin, setShowAdmin] = useState(isAdminMode());
+  const [queue, setQueue] = useState<Song[]>([]);
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
+  const [votedSongs, setVotedSongs] = useState<Set<string>>(new Set());
+  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [cooldownMinutes, setCooldownMinutes] = useState<number | undefined>(undefined);
+  const [isLiveAnimating, setIsLiveAnimating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionId] = useState(getSessionId());
+
+
+  // Get venue ID from URL parameter, or use demo
 function getVenueId(): string {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('venue') || 'demo-venue';
 }
+
+function hasAdminToken(vId: string) {
+  try { return !!localStorage.getItem(`adminToken:${vId}`); } catch { return false; }
+}
+
+const [hasAdmin, setHasAdmin] = useState(hasAdminToken(venueId));
+
+// kui venueId muutub, loe token uuesti
+useEffect(() => {
+  setHasAdmin(hasAdminToken(venueId));
+}, [venueId]);
+
+// kui keegi proovib URL-iga admin=true, aga tokenit pole, jää avalehele
+useEffect(() => {
+  if (showAdmin && !hasAdmin) setShowAdmin(false);
+}, [showAdmin, hasAdmin]);
+
 
 // Check if admin mode is enabled
 function isAdminMode(): boolean {
@@ -51,23 +83,11 @@ function getSessionId(): string {
   return sessionId;
 }
 
-export default function App() {
-  const [venueId] = useState(getVenueId());
-  const [showAdmin, setShowAdmin] = useState(isAdminMode());
-  const [queue, setQueue] = useState<Song[]>([]);
-  const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
-  const [votedSongs, setVotedSongs] = useState<Set<string>>(new Set());
-  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
-  const [cooldownMinutes, setCooldownMinutes] = useState<number | undefined>(undefined);
-  const [isLiveAnimating, setIsLiveAnimating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [sessionId] = useState(getSessionId());
-
-  // Initialize demo data and load queue
-  useEffect(() => {
-    async function init() {
-      try {
-        // Initialize demo venue with sample data (only for demo-venue)
+// Initialize demo data and load queue
+useEffect(() => {
+  async function init() {
+    try {
+      // Initialize demo venue with sample data (only for demo-venue)
         if (venueId === 'demo-venue') {
           await initDemoVenue(venueId);
         }
@@ -272,14 +292,17 @@ export default function App() {
           {/* Admin link for venue owners */}
           {venueId === 'demo-venue' && (
             <button
-              onClick={() => setShowAdmin(true)}
+              onClick={() => {
+                if (hasAdmin) setShowAdmin(true);
+                else alert("DJ PIN on nõutud. Logi sisse ülal asuva DJ login ribaga.");
+              }}
               className="mt-2 text-xs text-gray-600 hover:text-[#1DB954] transition-colors flex items-center gap-1 mx-auto"
             >
-              <Settings className="w-3 h-3" />
               Loo oma venue
             </button>
           )}
         </motion.div>
+        <AdminBar venueId={venueId} onGoAdmin={() => setShowAdmin(true)} />
 
         {/* Now Playing */}
         {nowPlaying && <NowPlaying song={nowPlaying} />}

@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Copy, Check, Download, Music } from "lucide-react";
 import { motion } from "motion/react";
+import { AdminBar } from "./AdminBar";
 
 interface VenueAdminProps {
   venueId?: string;
@@ -33,6 +34,30 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
     () => (venueId ? `${window.location.origin}/?venue=${venueId}` : ""),
     [venueId]
   );
+
+  const [pin, setPin] = useState("");
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+
+  // admin token localstoragest
+  useEffect(() => {
+    if (venueId) {
+      const t = localStorage.getItem(`adminToken:${venueId}`);
+      setAdminToken(t);
+    } else {
+      setAdminToken(null);
+    }
+  }, [venueId]);
+
+  function saveToken(t: string | null) {
+    if (!venueId) return;
+    if (t) {
+      localStorage.setItem(`adminToken:${venueId}`, t);
+    } else {
+      localStorage.removeItem(`adminToken:${venueId}`);
+    }
+    setAdminToken(t);
+  }
+
 
   useEffect(() => {
     // Kui tuldi Spotify callbackist, URL saab ?linked=1
@@ -90,9 +115,12 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
 
   async function refreshDevices() {
     if (!venueId) return alert("Venue ID puudub.");
+    if (!adminToken) return alert("Logi adminina sisse.");
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/spotify/devices/${venueId}`);
+      const r = await fetch(`${BASE}/spotify/devices/${venueId}`, {
+        headers: { "X-Venue-Admin": adminToken },
+      });
       const j = await r.json();
       if (!r.ok) return alert(j.error || "Failed to fetch devices");
       setDevices(j.devices || []);
@@ -101,14 +129,43 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
     }
   }
 
+    async function setPinFirstTime() {
+    if (!venueId) return alert("Genereeri venue ID");
+    if (!pin) return alert("Sisesta PIN");
+    const r = await fetch(`${BASE}/admin/set-pin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ venueId, pin }),
+    });
+    const j = await r.json();
+    if (!r.ok) return alert(j.error || "Failed to set PIN");
+    alert("PIN salvestatud. Logi nüüd sisse.");
+  }
+
+  async function adminLogin() {
+    if (!venueId) return alert("Genereeri venue ID");
+    if (!pin) return alert("Sisesta PIN");
+    const r = await fetch(`${BASE}/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ venueId, pin }),
+    });
+    const j = await r.json();
+    if (!r.ok) return alert(j.error || "Login failed");
+    saveToken(j.token);
+    setPin("");
+  }
+
+
   async function selectPlaybackDevice() {
     if (!venueId) return alert("Venue ID puudub.");
     if (!deviceId) return alert("Vali seade.");
+    if (!adminToken) return alert("Logi adminina sisse.");
     setLoading(true);
     try {
       const r = await fetch(`${BASE}/spotify/select-device`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Venue-Admin": adminToken },
         body: JSON.stringify({ venueId, deviceId }),
       });
       const j = await r.json();
@@ -121,9 +178,13 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
 
   async function playNext() {
     if (!venueId) return alert("Venue ID puudub.");
+    if (!adminToken) return alert("Logi adminina sisse.");
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/play-next/${venueId}`, { method: "POST" });
+      const r = await fetch(`${BASE}/play-next/${venueId}`, {
+        method: "POST",
+        headers: { "X-Venue-Admin": adminToken },
+      });
       const j = await r.json();
       if (!r.ok) return alert(j.error || "Failed to play next");
       await loadNow();
@@ -139,6 +200,17 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
     setNow(j.nowPlaying || null);
   }
 
+  async function adminLogout() {
+    if (!venueId || !adminToken) return saveToken(null);
+    await fetch(`${BASE}/admin/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Venue-Admin": adminToken },
+      body: JSON.stringify({ venueId }),
+    });
+    saveToken(null);
+  }
+
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <motion.div
@@ -151,6 +223,13 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
         </h1>
         <p className="text-gray-400">Loo QR-kood ja halda Spotify taasesitust</p>
       </motion.div>
+
+      {/* admin login */}
+      <AdminBar
+        venueId={venueId}
+        onGoAdmin={() => setShowAdmin(true)}
+      />
+
 
       {/* 0) Venue seaded + QR */}
       <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6">

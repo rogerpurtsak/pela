@@ -13,12 +13,27 @@ app.use(
   "*",
   cors({
     origin: (origin) => (origin && ALLOWED.has(origin) ? origin : false),
-    allowHeaders: ["Content-Type", "Authorization", "x-client-info", "apikey"],
+    allowHeaders: ["Content-Type", "Authorization", "x-client-info", "apikey", "X-Venue-Admin"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
   }),
 );
+
+async function sha256(s: string) {
+  const enc = new TextEncoder().encode(s);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// admin sessioni kontroll
+async function requireAdmin(c: any, venueId: string) {
+  const token = c.req.header("X-Venue-Admin") || c.req.header("x-venue-admin");
+  if (!token) return false;
+  const ok = await kv.get(`admin:sess:${venueId}:${token}`);
+  return Boolean(ok);
+}
+
 
 // --- Loo alam-app ja defineeri KÕIK route’id selle peale:
 const api = new Hono();
@@ -57,6 +72,7 @@ api.get("/now-playing/:venueId", async (c) => {
 api.post("/play-next/:venueId", async (c) => {
   try {
     const venueId = c.req.param("venueId");
+    if (!(await requireAdmin(c, venueId))) return c.json({ error: "Forbidden" }, 403);
     const deviceId = await kv.get(`spotify:device:${venueId}`);
     if (!deviceId) return c.json({ error: "No device selected for this venue" }, 400);
 
@@ -143,16 +159,43 @@ api.post("/add-song", async (c) => {
     // === soovitus: nõua ka uri/spotifyId, või vähemalt salvesta kui olemas
     // if (!song?.uri && !song?.spotifyId) return c.json({ error: "Spotify URI/ID required" }, 400);
 
+    // alles siis saab uue laulu lisada kui tal pole eelmist queues ja nowplayingus
     const sessionKey = `session:${venueId}:${sessionId}`;
     const session = await kv.get(sessionKey);
-    const cooldownMs = 30 * 60 * 1000;
+
+    // testimiseks 0
+    const baseCooldownMs = venueId === 0;
+
+    let enforceCooldown = false;
+    let remainingMinutes = 0;
+
     if (session?.lastAddedAt) {
       const since = Date.now() - session.lastAddedAt;
-      if (since < cooldownMs) {
-        const remainingMinutes = Math.ceil((cooldownMs - since) / 60000);
-        return c.json({ error: "Cooldown active", cooldownMinutes: remainingMinutes }, 429);
+
+      if (since < baseCooldownMs) {
+        // Kontrolli, kas eelmine lugu on endiselt aktiivne (queue'is või now-playing)
+        let prevStillActive = false;
+
+        if (session.lastSongId) {
+          const prevInQueue = await kv.get(`queue:${venueId}:${session.lastSongId}`);
+          const nowP = await kv.get(`nowplaying:${venueId}`);
+          prevStillActive = Boolean(prevInQueue) || nowP?.id === session.lastSongId;
+        }
+
+        if (prevStillActive) {
+          enforceCooldown = true;
+          remainingMinutes = Math.ceil((baseCooldownMs - since) / 60000);
+        }
       }
     }
+
+    if (enforceCooldown) {
+      return c.json(
+        { error: "Cooldown active", cooldownMinutes: remainingMinutes },
+        429
+      );
+    }
+
 
     // kui uri/spotifyid pole antud siis proovi leida spotify otsinguga
     let trackUri: string | undefined = song.uri;
@@ -191,7 +234,7 @@ api.post("/add-song", async (c) => {
       addedAt: Date.now(),
     };
     await kv.set(queueKey, newSong);
-    await kv.set(sessionKey, { venueId, sessionId, lastAddedAt: Date.now() });
+    await kv.set(sessionKey, { venueId, sessionId, lastAddedAt: Date.now(), lastSongId: songId });
     return c.json({ success: true, song: newSong });
   } catch (e) {
     console.error("Error adding song to queue:", e);
@@ -231,6 +274,7 @@ api.get("/spotify/login", (c) => {
 // Too seadmete list (DJ UI-s kuvamiseks)
 api.get("/spotify/devices/:venueId", async (c) => {
   const venueId = c.req.param("venueId");
+  if (!(await requireAdmin(c, venueId))) return c.json({ error: "Forbidden" }, 403);
   const token = await getUserAccessTokenForVenue(venueId);
   const r = await fetch("https://api.spotify.com/v1/me/player/devices", {
     headers: { Authorization: `Bearer ${token}` }
@@ -244,7 +288,8 @@ api.get("/spotify/devices/:venueId", async (c) => {
 api.post("/spotify/select-device", async (c) => {
   try {
     const { venueId, deviceId } = await c.req.json();
-    if (!venueId || !deviceId) return c.json({ error: "Missing venueId/deviceId" }, 400);
+  if (!venueId) return c.json({ error: "Missing venueId" }, 400);
+  if (!(await requireAdmin(c, venueId))) return c.json({ error: "Forbidden" }, 403);
     await kv.set(`spotify:device:${venueId}`, deviceId);
     return c.json({ success: true });
   } catch (e) {
@@ -298,6 +343,46 @@ api.get("/spotify/callback", async (c) => {
     console.error("callback error:", e);
     return c.text("Callback error", 500);
   }
+});
+
+// set admin pin
+api.post("/admin/set-pin", async (c) => {
+  const { venueId, pin } = await c.req.json();
+  if (!venueId || !pin) return c.json({ error: "Missing venueId/pin" }, 400);
+
+  const exists = await kv.get(`admin:pin:${venueId}`);
+  if (exists) return c.json({ error: "PIN already set" }, 400);
+
+  const salt = crypto.randomUUID();
+  const hash = await sha256(pin + ":" + salt);
+  await kv.set(`admin:pin:${venueId}`, { hash, salt });
+  return c.json({ success: true });
+});
+
+// login kontrollib pini
+api.post("/admin/login", async (c) => {
+  const { venueId, pin } = await c.req.json();
+  if (!venueId || !pin) return c.json({ error: "Missing venueId/pin" }, 400);
+
+  const rec = await kv.get(`admin:pin:${venueId}`);
+  if (!rec?.hash || !rec?.salt) return c.json({ error: "PIN not set" }, 400);
+
+  const hash = await sha256(pin + ":" + rec.salt);
+  if (hash !== rec.hash) return c.json({ error: "Invalid PIN" }, 401);
+
+  const sess = crypto.randomUUID();
+  const ttlMs = 24 * 60 * 60 * 1000; // 24h
+  await kv.set(`admin:sess:${venueId}:${sess}`, { createdAt: Date.now() }, { ttl: ttlMs });
+  return c.json({ success: true, token: sess, expiresInMs: ttlMs });
+});
+
+// Logout
+api.post("/admin/logout", async (c) => {
+  const { venueId } = await c.req.json();
+  const token = c.req.header("X-Venue-Admin") || c.req.header("x-venue-admin");
+  if (!venueId || !token) return c.json({ error: "Missing venueId/token" }, 400);
+  await kv.del(`admin:sess:${venueId}:${token}`);
+  return c.json({ success: true });
 });
 
 
