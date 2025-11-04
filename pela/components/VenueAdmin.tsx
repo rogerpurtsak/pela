@@ -218,16 +218,16 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
 
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-8 bg-black">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-8"
       >
-        <h1 className="text-3xl mb-2 bg-gradient-to-r from-[#1DB954] to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-3xl mb-2 bg-gradient-to-r from-[#1DB954] to-purple-500 bg-clip-text text-white">
           Venue Admin
         </h1>
-        <p className="text-gray-400">Loo QR-kood ja halda Spotify taasesitust</p>
+        <p className="text-white">Loo QR-kood ja halda Spotify taasesitust</p>
       </motion.div>
 
       {/* admin login */}

@@ -111,7 +111,7 @@ export default function AdminBar({
           <button
             onClick={logout}
             disabled={busy}
-            className="text-xs px-3 py-1 rounded border border-gray-700"
+            className="text-xs px-3 py-1 rounded border border-gray-700 text-white"
           >
             Logi välja
           </button>
@@ -135,7 +135,7 @@ export default function AdminBar({
             <button
               onClick={setPinFirstTime}
               disabled={busy}
-              className="text-xs px-3 py-1 rounded border border-gray-700"
+              className="text-xs px-3 py-1 rounded border border-gray-700 text-white"
               title="Sea PIN esimest korda"
             >
               Set PIN
