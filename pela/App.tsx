@@ -56,6 +56,19 @@ function hasAdminToken(vId: string) {
 
 const [hasAdmin, setHasAdmin] = useState(hasAdminToken(venueId));
 
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const wantsAdmin = params.get("admin") === "true";
+  const hasToken = !!localStorage.getItem(`adminToken:${venueId}`);
+  if (wantsAdmin && hasToken) {
+    setShowAdmin(true);
+  }
+  if (wantsAdmin && !hasToken) {
+    setShowAdmin(false);
+  }
+}, [venueId]);
+
 // kui venueId muutub, loe token uuesti
 useEffect(() => {
   setHasAdmin(hasAdminToken(venueId));
@@ -237,6 +250,13 @@ useEffect(() => {
     );
   }
 
+  const goAdmin = () => {
+    setShowAdmin(true);
+    const u = new URL(window.location.href);
+    u.searchParams.set("admin", "true");
+    window.history.replaceState(null, "", u.toString());
+  };
+
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white">
       {/* Background gradient effects */}
@@ -302,7 +322,7 @@ useEffect(() => {
             </button>
           )}
         </motion.div>
-        <AdminBar venueId={venueId} onGoAdmin={() => setShowAdmin(true)} />
+        <AdminBar venueId={venueId} onGoAdmin={goAdmin} allowSetPin />
 
         {/* Now Playing */}
         {nowPlaying && <NowPlaying song={nowPlaying} />}

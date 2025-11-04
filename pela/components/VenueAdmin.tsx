@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Copy, Check, Download, Music } from "lucide-react";
 import { motion } from "motion/react";
-import { AdminBar } from "./AdminBar";
+import AdminBar from "./AdminBar";
 
 interface VenueAdminProps {
   venueId?: string;
@@ -177,28 +177,34 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
   }
 
   async function playNext() {
-    if (!venueId) return alert("Venue ID puudub.");
-    if (!adminToken) return alert("Logi adminina sisse.");
+    if (!adminToken) { alert("DJ pole sisse logitud (PIN)."); return; }
     setLoading(true);
     try {
       const r = await fetch(`${BASE}/play-next/${venueId}`, {
         method: "POST",
-        headers: { "X-Venue-Admin": adminToken },
+        headers: { "X-Venue-Admin": adminToken }
       });
       const j = await r.json();
-      if (!r.ok) return alert(j.error || "Failed to play next");
+      if (!r.ok) throw new Error(j.error || "Play failed");
       await loadNow();
+    } catch (e:any) {
+      alert(e.message || "Play next error");
     } finally {
       setLoading(false);
     }
   }
 
   async function loadNow() {
-    if (!venueId) return;
-    const r = await fetch(`${BASE}/now-playing/${venueId}`);
-    const j = await r.json();
-    setNow(j.nowPlaying || null);
+    try {
+      const r = await fetch(`${BASE}/now-playing/${encodeURIComponent(venueId)}`);
+      const j = await r.json();
+      setNow(j.nowPlaying || null);
+    } catch {
+      setNow(null);
+    }
   }
+
+  useEffect(() => { loadNow(); }, [venueId]);
 
   async function adminLogout() {
     if (!venueId || !adminToken) return saveToken(null);
@@ -225,10 +231,8 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
       </motion.div>
 
       {/* admin login */}
-      <AdminBar
-        venueId={venueId}
-        onGoAdmin={() => setShowAdmin(true)}
-      />
+      <AdminBar venueId={venueId} />
+
 
 
       {/* 0) Venue seaded + QR */}
