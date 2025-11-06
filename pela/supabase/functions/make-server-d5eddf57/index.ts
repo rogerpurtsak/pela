@@ -11,9 +11,11 @@ const app = new Hono();
 
 // CORS whitelist (täienda vajadusel)
 const ALLOWED = new Set<string>([
-  "http://localhost:5173",
-  "https://pela.vercel.app",
-  "https://pela.xyz",
+  'http://localhost:5173',
+  'https://pela-ivory.vercel.app',
+  'https://pela.rjf.ee',
+  'https://pela-lxq2p00is-rogerpurtsaks-projects.vercel.app',   
+  'http://rjf.ee/pela',
 ]);
 
 app.use("*", logger());
