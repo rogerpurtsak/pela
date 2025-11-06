@@ -18,8 +18,9 @@ interface VenueAdminProps {
 
 type Device = { id: string; name: string; type: string; is_active: boolean };
 
-const BASE = import.meta.env.VITE_EDGE_BASE;
-
+const BASE = import.meta.env.VITE_EDGE_BASE as string;
+if (!BASE) throw new Error('env puudub ');
+  
 export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
   const venueFromUrl =
   new URLSearchParams(window.location.search).get("venue") || "";
@@ -66,17 +67,6 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     setIsAddOpen(false);
     setCooldownMinutes(undefined);
     alert("Lugu lisatud järjekorda.");
-  }
-
-  function goAudience() {
-    if (!venueId) {
-      alert("Genereeri kõigepealt venue ID.");
-      return;
-    }
-
-    window.history.pushState({}, "", audienceUrl);
-
-    onGoAudience?.();
   }
 
   function goAudience() {
@@ -156,7 +146,7 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   // --- DJ flow actions ---
   function connectSpotify() {
     if (!venueId) return alert("Genereeri kõigepealt venue ID.");
-    window.location.href = `${BASE}/spotify/login?venueId=${venueId}`;
+    window.location.href = `${BASE}/spotify/login?venueId=${encodeURIComponent(venueId)}`;
   }
 
   async function refreshDevices() {
