@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/dj", "destination": "/" },
+    { "source": "/dj/(.*)", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
