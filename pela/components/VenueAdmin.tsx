@@ -20,7 +20,7 @@ type Device = { id: string; name: string; type: string; is_active: boolean };
 
 const BASE = import.meta.env.VITE_EDGE_BASE as string;
 if (!BASE) throw new Error('env puudub ');
-  
+
 export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
   const venueFromUrl =
   new URLSearchParams(window.location.search).get("venue") || "";
@@ -37,6 +37,7 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [cooldownMinutes, setCooldownMinutes] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
+  const [hasPin, setHasPin] = useState(false);
 
   const venueUrl = venueId ? `${window.location.origin}/?venue=${venueId}` : "";
 
@@ -105,11 +106,12 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const generateVenueId = () => {
     const id = `venue-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     setVenueId(id);
-    // uue venue puhul nulli DJ seaded
     setLinked(false);
     setDevices([]);
     setDeviceId("");
     setNow(null);
+    setHasPin(false);
+    setAdminToken(null);
   };
 
   const handleCopy = () => {
@@ -165,7 +167,13 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     }
   }
 
-    async function setPinFirstTime() {
+  useEffect(() => {
+    if (!venueId) { setHasPin(false); return; }
+    const v = localStorage.getItem(`hasPin:${venueId}`) === '1';
+    setHasPin(v);
+  }, [venueId]);
+
+  async function setPinFirstTime() {
     if (!venueId) return alert("Genereeri venue ID");
     if (!pin) return alert("Sisesta PIN");
     const r = await fetch(`${BASE}/admin/set-pin`, {
@@ -175,8 +183,11 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     });
     const j = await r.json();
     if (!r.ok) return alert(j.error || "Failed to set PIN");
+    localStorage.setItem(`hasPin:${venueId}`, '1');
+    setHasPin(true);
     alert("PIN salvestatud. Logi nüüd sisse.");
   }
+
 
   async function adminLogin() {
     if (!venueId) return alert("Genereeri venue ID");
@@ -283,7 +294,43 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
         </Button>
 
 
-      {/* admin login */}
+      {/* admin login mdea juhul kui vaja on */}
+
+      {/* Admin (PIN) plokk – lisa see näiteks QR-kaardi järel */}
+            {venueId && (
+              <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
+                <h2 className="text-lg font-semibold mb-2">Admin (PIN)</h2>
+
+                {!adminToken && (
+                  <div className="flex gap-2 items-center mb-3">
+                    <Input
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      placeholder="Sisesta PIN"
+                      className="bg-[#0e0e0e] border-gray-700 text-white placeholder-gray-500 caret-white"
+                    />
+                    {!hasPin && (
+                      <Button onClick={setPinFirstTime} className="text-black bg-white hover:bg-[#cbe4d4]">
+                        Set PIN
+                      </Button>
+                    )}
+                    <Button onClick={adminLogin} className="text-black bg-white hover:bg-[#cbe4d4]">
+                      Login
+                    </Button>
+                  </div>
+                )}
+
+                {adminToken && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-emerald-400">Oled sisse logitud.</span>
+              <Button onClick={adminLogout} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4]">
+                Logout
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
 
       {/* 0) Venue seaded + QR */}
       <Card className="bg-black border-gray-800 p-6 mb-6">
@@ -377,6 +424,8 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
                   setDevices([]);
                   setDeviceId("");
                   setNow(null);
+                  setHasPin(false);
+                  setAdminToken(null);
                 }}
                 variant="ghost"
                 className="w-full text-gray-500 cursor-pointer"
