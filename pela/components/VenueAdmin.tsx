@@ -53,6 +53,13 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [pin, setPin] = useState("");
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
+  useEffect(() => {
+  const u = new URL(window.location.href);
+  if (u.searchParams.get('linked') === '1') {
+    openSpotifyApp();
+  }
+}, []);
+
   function openSpotifyApp() {
   const webUrl = 'https://open.spotify.com/';
   const isAndroid = /Android/i.test(navigator.userAgent);

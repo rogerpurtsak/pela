@@ -477,7 +477,8 @@ api.get("/spotify/login", (c) => {
     client_id: clientId,
     redirect_uri: redirectUri,
     scope: scopes,
-    state: venueId, // seome venue
+    state: venueId,
+    show_dialog: "false",
   });
 
   return c.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
