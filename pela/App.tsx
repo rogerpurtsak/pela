@@ -55,11 +55,6 @@ export default function App() {
 } | null>(null);
   const BASE = import.meta.env.VITE_EDGE_BASE as string;
 
-  async function loadQueue(id: string = venueId) {
-  const data = await fetchQueue(id);
-  setQueue(data);
-}
-
 
   async function loadQueue(venueId: string) {
     const data = await fetchQueue(venueId);
@@ -103,8 +98,10 @@ function onSkipVote() {
     .catch((e) => alert(e.message));
 }
 
-
-
+  function hasAdminToken(id: string) {
+    return !!localStorage.getItem(`adminToken:${id}`);
+  }
+  
 useEffect(() => {
   if (!venueId) return;
   let alive = true;
