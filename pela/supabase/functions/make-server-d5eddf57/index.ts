@@ -89,9 +89,12 @@ api.post("/play-next/:venueId", async (c) => {
     const deviceId = await kv.get(`spotify:device:${venueId}`);
     if (!deviceId) return c.json({ error: "No device selected for this venue" }, 400);
 
-    // 1) vali järgmine lugu (hype desc, addedAt asc)
     const items = await kv.getByPrefix(`queue:${venueId}:`);
-    if (items.length === 0) return c.json({ error: "Queue empty" }, 400);
+    if (items.length === 0) {
+      await autoFillFromRecommendations(venueId);
+      return c.json({ error: "Queue empty – tried auto-fill" }, 400);
+    }
+
     items.sort(
       (a: any, b: any) =>
         (b.hype ?? 0) - (a.hype ?? 0) || (a.addedAt ?? 0) - (b.addedAt ?? 0),
@@ -147,7 +150,16 @@ api.post("/play-next/:venueId", async (c) => {
       duration_ms: duration_ms ?? null,
       startedAt: Date.now(),
     });
+
+    await kv.del(`skip:votes:${venueId}:${next.id}`);
+
     await kv.del(`queue:${venueId}:${next.id}`);
+
+    if (next.spotifyId) {
+      const recent: string[] = (await kv.get(`recent:tracks:${venueId}`)) ?? [];
+      const updated = [...recent, next.spotifyId].slice(-10);
+      await kv.set(`recent:tracks:${venueId}`, updated);
+    }
 
     return c.json({ success: true });
   } catch (e) {
@@ -608,6 +620,75 @@ api.post("/spotify/play", async (c) => {
   }
 });
 
+// GET /skip/status/:venueId  -> { trackId, votes, threshold }
+api.get("/skip/status/:venueId", async (c) => {
+  const venueId = c.req.param("venueId");
+  const now = await kv.get(`nowplaying:${venueId}`);
+  if (!now?.id) return c.json({ trackId: null, votes: 0, threshold: 5 });
+
+  const threshold = (await kv.get(`skip:threshold:${venueId}`)) ?? 5;
+  const votes = (await kv.get(`skip:votes:${venueId}:${now.id}`)) ?? 0;
+  return c.json({ trackId: now.id, votes, threshold });
+});
+
+// POST /skip/vote { venueId, sessionId }
+api.post("/skip/vote", async (c) => {
+  try {
+    const { venueId, sessionId } = await c.req.json();
+    if (!venueId || !sessionId) return c.json({ error: "Missing venueId/sessionId" }, 400);
+
+    // praegune lugu
+    const now = await kv.get(`nowplaying:${venueId}`);
+    if (!now?.id) return c.json({ error: "No track playing" }, 400);
+    const trackId = now.id;
+
+    // kas see sessioon on juba hääletanud selle loo vastu?
+    const votedKey = `skip:voted:${venueId}:${sessionId}:${trackId}`;
+    if (await kv.get(votedKey)) return c.json({ error: "Already voted" }, 400);
+
+    // suurenda häälte arvu
+    const votesKey = `skip:votes:${venueId}:${trackId}`;
+    const current = (await kv.get(votesKey)) ?? 0;
+    const newVotes = current + 1;
+    await kv.set(votesKey, newVotes);
+    await kv.set(votedKey, true);
+
+    const threshold = (await kv.get(`skip:threshold:${venueId}`)) ?? 5;
+
+    // kui lävi täis → next + nulli loendurid
+    if (newVotes >= threshold) {
+      try {
+        const token = await getUserAccessTokenForVenue(venueId);
+        const deviceId = await kv.get(`spotify:device:${venueId}`);
+
+        // Spotify next
+        await fetch(
+          `https://api.spotify.com/v1/me/player/next${
+            deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ""
+          }`,
+          { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // nulli skip häälte loendur (selle loo jaoks)
+        await kv.del(votesKey);
+
+        // soovi korral võid kohe värskendada nowplaying infot:
+        // (lihtsuse mõttes jätame järgmise /spotify/now polling'u hooleks)
+      } catch (e) {
+        console.error("skip->next failed:", e);
+        // isegi kui next ebaõnnestus, tagastame uue häälte seisu
+      }
+    }
+
+    return c.json({ ok: true, votes: newVotes, threshold });
+  } catch (e) {
+    console.error("skip vote error:", e);
+    return c.json({ error: "Skip vote failed" }, 500);
+  }
+});
+
+
+
 // ———————————————————————————————————————————————————————————
 // SPOTIFY: kataloogi otsing (client-credentials, mitte playback)
 // ———————————————————————————————————————————————————————————
@@ -780,6 +861,46 @@ async function getSpotifyAccessToken(): Promise<string | null> {
   }
 }
 
+async function autoFillFromRecommendations(venueId: string) {
+  const token = await getUserAccessTokenForVenue(venueId);
+  const deviceId = await kv.get(`spotify:device:${venueId}`);
+  if (!deviceId) return;
+
+  // loe viimased 5 seemet
+  const recent: string[] = (await kv.get(`recent:tracks:${venueId}`)) ?? [];
+  const seeds = recent.slice(-5).join(',');
+  if (!seeds) return; // pole seemneid
+
+  const rec = await fetch(
+    `https://api.spotify.com/v1/recommendations?seed_tracks=${encodeURIComponent(seeds)}&limit=5`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!rec.ok) return;
+  const data = await rec.json();
+  const tracks: string[] = (data.tracks ?? []).map((t: any) => t.uri);
+
+  // lisa soovitused Spotify queue'i
+  for (const uri of tracks) {
+    await fetch(
+      `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+    );
+  }
+
+  // kui pausis, käivita
+  const st = await fetch("https://api.spotify.com/v1/me/player", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const state = st.ok ? await st.json() : null;
+  if (!state?.is_playing) {
+    await fetch("https://api.spotify.com/v1/me/player", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: [deviceId], play: true }),
+    });
+  }
+}
+
 // Kasutaja (venue) token — playback (Authorization Code -> refresh)
 async function getUserAccessTokenForVenue(venueId: string): Promise<string> {
   const r = await kv.get(`spotify:refresh:${venueId}`);
@@ -809,7 +930,7 @@ async function getUserAccessTokenForVenue(venueId: string): Promise<string> {
   }
   const data = await resp.json();
 
-  // Spotify võib vahel tagastada uue refresh_token'i — soovi korral salvesta:
+ 
   if (data.refresh_token && data.refresh_token !== r.refresh_token) {
     await kv.set(`spotify:refresh:${venueId}`, {
       refresh_token: data.refresh_token,
@@ -820,6 +941,50 @@ async function getUserAccessTokenForVenue(venueId: string): Promise<string> {
 
   return data.access_token as string;
 }
+
+async function getPlayerState(venueId: string) {
+  const token = await getUserAccessTokenForVenue(venueId);
+  const r = await fetch("https://api.spotify.com/v1/me/player", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return null;
+  return await r.json();
+}
+api.post("/guard/ensure/:venueId", async (c) => {
+  const venueId = c.req.param("venueId");
+  const check = await requireAdmin(c, venueId);
+  if (!check.ok) return check.res;
+
+  const deviceId = await kv.get(`spotify:device:${venueId}`);
+  if (!deviceId) return c.json({ ok: false, reason: "no-device" });
+
+  // 1) vaata, kas midagi mängib
+  const state = await getPlayerState(venueId);
+  const isPlaying = !!state?.is_playing;
+
+  // 2) kas queue on tühi?
+  const items = await kv.getByPrefix(`queue:${venueId}:`);
+
+  if (isPlaying) {
+
+    return c.json({ ok: true, playing: true, queue: items.length });
+  }
+
+  
+  if (items.length > 0) {
+
+    const playNext = await fetch(`${c.req.url.replace(/\/guard\/ensure\/.*/,'')}/play-next/${venueId}`, {
+      method: "POST",
+      headers: { "X-Venue-Admin": c.req.header("X-Venue-Admin") || "" },
+    });
+    const j = await playNext.json().catch(() => ({}));
+    return c.json({ ok: playNext.ok, tried: "play-next", detail: j });
+  } else {
+    await autoFillFromRecommendations(venueId);
+    return c.json({ ok: true, tried: "auto-fill" });
+  }
+});
+
 
 // routing
 app.route("/", api);

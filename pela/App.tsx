@@ -41,6 +41,9 @@ export default function App() {
   const [isLiveAnimating, setIsLiveAnimating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(getSessionId());
+  const [skip, setSkip] = useState<{trackId: string|null; votes: number; threshold: number}>({trackId: null, votes: 0, threshold: 5});
+  const [skipVotedForTrack, setSkipVotedForTrack] = useState<string|null>(null);
+
 
   const [nowLive, setNowLive] = useState<{
   startedAt: number | null;
@@ -49,6 +52,43 @@ export default function App() {
   item: { name: string; artists: string; albumArt: string; uri: string; id: string } | null;
 } | null>(null);
   const BASE = import.meta.env.VITE_EDGE_BASE as string;
+
+
+  useEffect(() => {
+  if (!venueId) return;
+  let alive = true;
+
+  const loadSkip = async () => {
+    try {
+      const s = await fetchSkipStatus(venueId);
+      if (!alive) return;
+      setSkip(s);
+      // kui lugu vahetus, tühista kohaliku nupu “already voted” märge
+      if (skipVotedForTrack && s.trackId && s.trackId !== skipVotedForTrack) {
+        setSkipVotedForTrack(null);
+      }
+    } catch {}
+  };
+
+  const id = setInterval(loadSkip, 3000);
+  loadSkip();
+  return () => { alive = false; clearInterval(id); };
+}, [venueId, skipVotedForTrack]);
+
+function onSkipVote() {
+  if (!venueId) return;
+  if (!skip.trackId) return;
+
+  if (skipVotedForTrack === skip.trackId) return;
+
+  sendSkipVote(venueId, sessionId)
+    .then((res) => {
+      setSkip((s) => ({ ...s, votes: res.votes, threshold: res.threshold }));
+      setSkipVotedForTrack(skip.trackId!);
+    })
+    .catch((e) => alert(e.message));
+}
+
 
 
 useEffect(() => {
@@ -338,6 +378,24 @@ useEffect(() => {
           />
         )}
 
+        {skip.trackId && (
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={onSkipVote}
+              disabled={skipVotedForTrack === skip.trackId}
+              className={`px-3 py-1 rounded-full text-sm border ${
+                skipVotedForTrack === skip.trackId
+                  ? "opacity-50 cursor-not-allowed border-gray-700 text-gray-400"
+                  : "border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10"
+              }`}
+            >
+              {skipVotedForTrack === skip.trackId ? "Voted to skip" : "Vote to skip"}
+            </button>
+            <div className="text-xs text-gray-400">
+              {skip.votes} / {skip.threshold}
+            </div>
+          </div>
+        )}
 
 
         {/* Queue */}

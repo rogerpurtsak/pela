@@ -54,6 +54,26 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
   useEffect(() => {
+  if (!venueId || !adminToken) return;
+  let alive = true;
+
+  const ping = async () => {
+    try {
+      await fetch(`${BASE}/guard/ensure/${encodeURIComponent(venueId)}`, {
+        method: "POST",
+        headers: { "X-Venue-Admin": adminToken },
+        cache: "no-store",
+      });
+    } catch {}
+    if (alive) setTimeout(ping, 4000);
+  };
+
+  ping();
+  return () => { alive = false; };
+}, [venueId, adminToken]);
+
+
+  useEffect(() => {
   const u = new URL(window.location.href);
   if (u.searchParams.get('linked') === '1') {
     openSpotifyApp();
@@ -550,32 +570,49 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
         <h2 className="text-lg font-semibold mb-2">
           2) Playback device (desktop/mobiili Spotify)
         </h2>
-        <div className="flex gap-2 mb-3">
-          <Button onClick={refreshDevices} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer" disabled={!linked || !venueId || loading}>
-            Refresh devices
-          </Button>
-          <select
-            className="bg-black border border-gray-700 rounded-lg px-3 py-2"
-            value={deviceId}
-            onChange={(e) => setDeviceId(e.target.value)}
-            disabled={!linked || devices.length === 0}
-          >
-            <option value="">-- vali seade --</option>
-            {devices.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name || d.type}
-                {d.is_active ? " (active)" : ""}
-              </option>
-            ))}
-          </select>
-          <Button onClick={selectPlaybackDevice} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer" disabled={!deviceId}>
-            Use this device
-          </Button>
-          <Button onClick={openSpotifyApp} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">
-            Open Spotify app
-          </Button>
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 mb-3">
+            <Button
+              onClick={refreshDevices}
+              variant="outline"
+              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+              disabled={!linked || !venueId || loading}
+            >
+              Refresh devices
+            </Button>
 
-        </div>
+            <select
+              className="min-w-[200px] flex-1 max-w-full bg-black border border-gray-700 rounded-lg px-3 py-2 sm:flex-1 w-full"
+              value={deviceId}
+              onChange={(e) => setDeviceId(e.target.value)}
+              disabled={!linked || devices.length === 0}
+            >
+              <option value="">-- vali seade --</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name || d.type}
+                  {d.is_active ? " (active)" : ""}
+                </option>
+              ))}
+            </select>
+
+            <Button
+              onClick={selectPlaybackDevice}
+              variant="outline"
+              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+              disabled={!deviceId}
+            >
+              Use this device
+            </Button>
+
+            <Button
+              onClick={openSpotifyApp}
+              variant="outline"
+              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+            >
+              Open Spotify app
+            </Button>
+          </div>
+
         <p className="text-xs text-gray-500">
           Ava Spotify äpp ja hoia seade online/active.
         </p>
