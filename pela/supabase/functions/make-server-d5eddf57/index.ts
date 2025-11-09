@@ -722,6 +722,53 @@ api.post("/skip/vote", async (c) => {
   }
 });
 
+// POST /spotify/pause/:venueId
+api.post("/spotify/pause/:venueId", async (c) => {
+  const venueId = c.req.param("venueId");
+  const check = await requireAdmin(c, venueId);
+  if (!check.ok) return check.res;
+
+  const token = await getUserAccessTokenForVenue(venueId);
+  const r = await fetch("https://api.spotify.com/v1/me/player/pause", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok && r.status !== 204) {
+    const t = await r.text(); console.error("pause failed:", t);
+    return c.json({ error: "Failed to pause" }, 500);
+  }
+  return c.json({ ok: true });
+});
+
+// POST /spotify/resume/:venueId
+api.post("/spotify/resume/:venueId", async (c) => {
+  const venueId = c.req.param("venueId");
+  const check = await requireAdmin(c, venueId);
+  if (!check.ok) return check.res;
+
+  const token = await getUserAccessTokenForVenue(venueId);
+  const deviceId = await kv.get(`spotify:device:${venueId}`);
+  // (soovi korral tee transfer enne play’d)
+  if (deviceId) {
+    await fetch("https://api.spotify.com/v1/me/player", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: [deviceId], play: false }),
+    });
+  }
+
+  const r = await fetch("https://api.spotify.com/v1/me/player/play", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({}), // resume
+  });
+  if (!r.ok && r.status !== 204) {
+    const t = await r.text(); console.error("resume failed:", t);
+    return c.json({ error: "Failed to resume" }, 500);
+  }
+  return c.json({ ok: true });
+});
+
 
 
 // ———————————————————————————————————————————————————————————

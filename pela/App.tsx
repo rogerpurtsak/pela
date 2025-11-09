@@ -367,11 +367,11 @@ useEffect(() => {
         )}
 
         {skip.trackId && (
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 mb-3 flex items-center gap-3">
             <button
               onClick={onSkipVote}
               disabled={skipVotedForTrack === skip.trackId}
-              className={`px-3 py-1 rounded-full text-sm border ${
+              className={`px-3 py-1 rounded-full text-sm border cursor-pointer ${
                 skipVotedForTrack === skip.trackId
                   ? "opacity-50 cursor-not-allowed border-gray-700 text-gray-400"
                   : "border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10"

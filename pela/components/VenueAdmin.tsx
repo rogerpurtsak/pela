@@ -396,6 +396,32 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     saveToken(null);
   }
 
+  // DJ-le sobiv kontrolliriba (nt VenueAdmin komponendis)
+function PlaybackControls({ venueId, isPlaying }: { venueId: string; isPlaying: boolean }) {
+  const token = localStorage.getItem(`adminToken:${venueId}`) || '';
+
+  async function onToggle() {
+    try {
+      if (isPlaying) await adminPause(venueId, token);
+      else           await adminResume(venueId, token);
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-3">
+      <button
+        onClick={onToggle}
+        className="px-3 py-1 rounded-full border border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10 text-sm"
+      >
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+    </div>
+  );
+}
+
+
 
   return (
   <div className="bg-[#222222]">
@@ -660,6 +686,7 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
             >
               Reload Now Playing
             </Button>
+            <PlaybackControls venueId={venueId} isPlaying={!!nowLive?.is_playing} />
           </div>
 
           {/* info-kaart (kasuta live item'i infot kui olemas) */}

@@ -49,6 +49,22 @@ export async function sendSkipVote(venueId: string, sessionId: string) {
   return j;
 }
 
+export async function adminPause(venueId: string, token: string) {
+  const r = await fetch(`${API_BASE}/spotify/pause/${encodeURIComponent(venueId)}`, {
+    method: 'POST',
+    headers: { 'X-Venue-Admin': token },
+  });
+  if (!r.ok) throw new Error('Pause failed');
+}
+
+export async function adminResume(venueId: string, token: string) {
+  const r = await fetch(`${API_BASE}/spotify/resume/${encodeURIComponent(venueId)}`, {
+    method: 'POST',
+    headers: { 'X-Venue-Admin': token },
+  });
+  if (!r.ok) throw new Error('Resume failed');
+}
+
 
 export async function fetchNowPlaying(venueId: string): Promise<NowPlaying | null> {
   const response = await fetch(`${API_BASE}/now-playing/${venueId}`, {
