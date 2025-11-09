@@ -31,7 +31,7 @@ const LOGIN_GUARD_KEY = (v: string) => `spotify:loginInFlight:${v}`;
 const BASE = import.meta.env.VITE_EDGE_BASE as string;
 if (!BASE) throw new Error('env puudub ');
 
-export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
+export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong, adminPause, adminResume }: VenueAdminProps) {
   const venueFromUrl =
   new URLSearchParams(window.location.search).get("venue") || "";
   const [venueId, setVenueId] = useState(initialVenueId || venueFromUrl || "");
