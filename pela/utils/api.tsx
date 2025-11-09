@@ -33,20 +33,20 @@ export async function fetchQueue(venueId: string): Promise<Song[]> {
 }
 
 export async function fetchSkipStatus(venueId: string) {
-  const r = await fetch(`${import.meta.env.VITE_EDGE_BASE}/skip/status/${encodeURIComponent(venueId)}`, { cache: "no-store" });
-  if (!r.ok) throw new Error("skip status failed");
-  return r.json() as Promise<{ trackId: string|null; votes: number; threshold: number }>;
+  const r = await fetch(`${BASE}/skip/status/${encodeURIComponent(venueId)}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch skip status');
+  return await r.json();
 }
 
 export async function sendSkipVote(venueId: string, sessionId: string) {
-  const r = await fetch(`${import.meta.env.VITE_EDGE_BASE}/skip/vote`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const r = await fetch(`${BASE}/skip/vote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ venueId, sessionId }),
   });
   const j = await r.json();
-  if (!r.ok) throw new Error(j.error || "skip vote failed");
-  return j as { ok: true; votes: number; threshold: number };
+  if (!r.ok) throw new Error(j.error || 'Skip vote failed');
+  return j;
 }
 
 

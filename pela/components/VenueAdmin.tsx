@@ -571,9 +571,9 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
       {/* 1) Spotify ühendus */}
       <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
         <h2 className="text-lg font-semibold mb-2">1) Connect Spotify</h2>
-          <p className="text-sm text-gray-400 mb-3">
-            Staatus: {isLinked ? "✅ lingitud" : "❌ linkimata"}
-          </p>
+        <p className="text-sm text-gray-400 mb-3">
+          Staatus: {isLinked ? "✅ lingitud" : "❌ linkimata"}
+        </p>
 
         <Button onClick={connectSpotify} variant="outline"
           className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">

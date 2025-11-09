@@ -624,8 +624,25 @@ api.post("/spotify/play", async (c) => {
 // GET /skip/status/:venueId  -> { trackId, votes, threshold }
 api.get("/skip/status/:venueId", async (c) => {
   const venueId = c.req.param("venueId");
-  const now = await kv.get(`nowplaying:${venueId}`);
-  if (!now?.id) return c.json({ trackId: null, votes: 0, threshold: 5 });
+  let now = await kv.get(`nowplaying:${venueId}`);
+  if (!now?.id) {
+    const state = await getPlayerState(venueId).catch(() => null);
+    const item = state?.item;
+    if (item?.id) {
+      now = {
+        id: item.id,
+        title: item.name,
+        artist: (item.artists ?? []).map((a: any) => a.name).join(", "),
+        albumArt: item.album?.images?.[0]?.url ?? "",
+        duration_ms: item.duration_ms ?? null,
+        startedAt: state?.is_playing ? Date.now() - (state?.progress_ms ?? 0) : null,
+        uri: item.uri,
+        spotifyId: item.id,
+        };
+        await kv.set(`nowplaying:${venueId}`, now);
+      }
+    }
+    if (!now?.id) return c.json({ trackId: null, votes: 0, threshold: 5 });
 
   const threshold = (await kv.get(`skip:threshold:${venueId}`)) ?? 5;
   const votes = (await kv.get(`skip:votes:${venueId}:${now.id}`)) ?? 0;
@@ -639,8 +656,25 @@ api.post("/skip/vote", async (c) => {
     if (!venueId || !sessionId) return c.json({ error: "Missing venueId/sessionId" }, 400);
 
     // praegune lugu
-    const now = await kv.get(`nowplaying:${venueId}`);
-    if (!now?.id) return c.json({ error: "No track playing" }, 400);
+    let now = await kv.get(`nowplaying:${venueId}`);
+   if (!now?.id) {
+     const state = await getPlayerState(venueId).catch(() => null);
+     const item = state?.item;
+     if (item?.id) {
+       now = {
+         id: item.id,
+         title: item.name,
+         artist: (item.artists ?? []).map((a: any) => a.name).join(", "),
+         albumArt: item.album?.images?.[0]?.url ?? "",
+         duration_ms: item.duration_ms ?? null,
+         startedAt: state?.is_playing ? Date.now() - (state?.progress_ms ?? 0) : null,
+         uri: item.uri,
+         spotifyId: item.id,
+       };
+       await kv.set(`nowplaying:${venueId}`, now);
+     }
+   }
+   if (!now?.id) return c.json({ error: "No track playing" }, 400);
     const trackId = now.id;
 
     // kas see sessioon on juba hääletanud selle loo vastu?
@@ -811,6 +845,7 @@ api.post("/init-demo/:venueId", async (c) => {
     ];
     for (const s of demoSongs) await kv.set(`queue:${venueId}:${s.id}`, s);
     await kv.set(`nowplaying:${venueId}`, {
+      id: "demo-now-1", 
       title: "Starboy",
       artist: "The Weeknd ft. Daft Punk",
       albumArt:
