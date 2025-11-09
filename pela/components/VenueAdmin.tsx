@@ -10,6 +10,7 @@ import { NowPlayingCard } from "./NowPlayingCard";
 import { AddSongSheet } from "./AddSongSheet";
 import { useNavigate } from "react-router-dom";
 import { PlaybackProgress } from "./PlaybackProgress";
+import { adminPause as apiAdminPause, adminResume as apiAdminResume } from "./utils/api"; 
 
 
 interface VenueAdminProps {
@@ -31,7 +32,7 @@ const LOGIN_GUARD_KEY = (v: string) => `spotify:loginInFlight:${v}`;
 const BASE = import.meta.env.VITE_EDGE_BASE as string;
 if (!BASE) throw new Error('env puudub ');
 
-export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong, adminPause, adminResume }: VenueAdminProps) {
+export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
   const venueFromUrl =
   new URLSearchParams(window.location.search).get("venue") || "";
   const [venueId, setVenueId] = useState(initialVenueId || venueFromUrl || "");
@@ -410,7 +411,7 @@ function PlaybackControls({ venueId, isPlaying }: { venueId: string; isPlaying: 
   }
 
   return (
-    <div className="flex items-center gap-2 mt-3">
+    <div className="flex items-center gap-2">
       <button
         onClick={onToggle}
         className="px-3 py-1 rounded-full border border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10 text-sm"
