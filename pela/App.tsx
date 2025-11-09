@@ -97,11 +97,11 @@ function onSkipVote() {
     })
     .catch((e) => alert(e.message));
 }
-
+// Kontrolli, kas kasutajal on admin token
   function hasAdminToken(id: string) {
     return !!localStorage.getItem(`adminToken:${id}`);
   }
-  
+
 useEffect(() => {
   if (!venueId) return;
   let alive = true;
