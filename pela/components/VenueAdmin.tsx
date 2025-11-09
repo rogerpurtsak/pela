@@ -10,7 +10,7 @@ import { NowPlayingCard } from "./NowPlayingCard";
 import { AddSongSheet } from "./AddSongSheet";
 import { useNavigate } from "react-router-dom";
 import { PlaybackProgress } from "./PlaybackProgress";
-import { adminPause as apiAdminPause, adminResume as apiAdminResume } from "./utils/api"; 
+import { adminPause as apiAdminPause, adminResume as apiAdminResume } from "../utils/api";
 
 
 interface VenueAdminProps {
