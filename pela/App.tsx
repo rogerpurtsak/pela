@@ -12,7 +12,9 @@ import {
   fetchNowPlaying, 
   voteForSong, 
   addSongToQueue,
-  initDemoVenue 
+  initDemoVenue,
+  fetchSkipStatus,
+  sendSkipVote
 } from './utils/api';
 import { createClient } from './utils/supabase/client';
 
