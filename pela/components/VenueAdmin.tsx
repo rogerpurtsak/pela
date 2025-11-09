@@ -20,6 +20,14 @@ interface VenueAdminProps {
 
 type Device = { id: string; name: string; type: string; is_active: boolean };
 
+const qs0 = new URLSearchParams(window.location.search);
+const adminParam0 = qs0.get("admin") === "true";
+const venueFromUrl0 = qs0.get("venue") || "";
+const linkedParam0 = qs0.get("linked") === "1";
+
+const LINKED_KEY = (v: string) => `spotify:linked:${v}`;
+const LOGIN_GUARD_KEY = (v: string) => `spotify:loginInFlight:${v}`;
+
 const BASE = import.meta.env.VITE_EDGE_BASE as string;
 if (!BASE) throw new Error('env puudub ');
 
@@ -31,7 +39,6 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [copied, setCopied] = useState(false);
 
   // --- DJ flow state ---
-  const [linked, setLinked] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [deviceId, setDeviceId] = useState("");
   const [now, setNow] = useState<any>(null);
@@ -53,6 +60,47 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [pin, setPin] = useState("");
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
+
+    const [isLinked, setIsLinked] = useState<boolean>(() => {
+    if (!venueFromUrl0) return linkedParam0;
+    return linkedParam0 || sessionStorage.getItem(LINKED_KEY(venueFromUrl0)) === "1";
+  });
+
+  useEffect(() => {
+    if (!venueId) return;
+    const sp = new URLSearchParams(window.location.search);
+    const gotLinked = sp.get("linked") === "1";
+    if (gotLinked) {
+      sessionStorage.setItem(LINKED_KEY(venueId), "1");
+      sessionStorage.removeItem(LOGIN_GUARD_KEY(venueId)); // katkestab autologini edasi
+      setIsLinked(true);
+
+      // puhasta 'linked' URL-ist (jätame admin & venue alles)
+      sp.delete("linked");
+      const clean = `${location.pathname}?${sp.toString()}`;
+      window.history.replaceState(null, "", clean);
+    } else {
+      // kui URL-is pole linked, aga storage ütleb, sünkroniseeri
+      const stored = sessionStorage.getItem(LINKED_KEY(venueId)) === "1";
+      if (stored && !isLinked) setIsLinked(true);
+    }
+  }, [venueId]);
+
+
+  useEffect(() => {
+    if (!venueId) return;
+    const sp = new URLSearchParams(window.location.search);
+    const adminParam = sp.get("admin") === "true";
+    if (adminParam && !isLinked) {
+      const guardKey = LOGIN_GUARD_KEY(venueId);
+      if (!sessionStorage.getItem(guardKey)) {
+        sessionStorage.setItem(guardKey, "1");
+        window.location.href = `${BASE}/spotify/login?venueId=${encodeURIComponent(venueId)}`;
+      }
+    }
+  }, [venueId, isLinked]);
+
+
   useEffect(() => {
   if (!venueId || !adminToken) return;
   let alive = true;
@@ -71,16 +119,6 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   ping();
   return () => { alive = false; };
 }, [venueId, adminToken]);
-
-  useEffect(() => {
-    const sp = new URLSearchParams(location.search);
-    if (sp.get("linked") === "1") {
-      sp.delete("linked");
-      const clean = `${location.pathname}?${sp.toString()}`;
-      window.history.replaceState(null, "", clean);
-    }
-  }, []);
-
 
 
   function openSpotifyApp() {
@@ -186,16 +224,6 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     return () => clearInterval(id);
   }, [venueId]);
 
-  // admin token localstoragest
-  useEffect(() => {
-    if (venueId) {
-      const t = localStorage.getItem(`adminToken:${venueId}`);
-      setAdminToken(t);
-    } else {
-      setAdminToken(null);
-    }
-  }, [venueId]);
-
   function saveToken(t: string | null) {
     if (!venueId) return;
     if (t) {
@@ -206,18 +234,9 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     setAdminToken(t);
   }
 
-
-  useEffect(() => {
-    // Kui tuldi Spotify callbackist, URL saab ?linked=1
-    const u = new URL(window.location.href);
-    if (u.searchParams.get("linked") === "1") setLinked(true);
-    if (venueId) loadNow(); 
-  }, [venueId]);
-
   const generateVenueId = () => {
     const id = `venue-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     setVenueId(id);
-    setLinked(false);
     setDevices([]);
     setDeviceId("");
     setNow(null);
@@ -259,8 +278,10 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   // --- DJ flow actions ---
   function connectSpotify() {
     if (!venueId) return alert("Genereeri kõigepealt venue ID.");
+    sessionStorage.setItem(LOGIN_GUARD_KEY(venueId), "1"); // tähista tahtlik login
     window.location.href = `${BASE}/spotify/login?venueId=${encodeURIComponent(venueId)}`;
   }
+
 
   async function refreshDevices() {
     if (!venueId) return alert("Venue ID puudub.");
@@ -531,7 +552,6 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
                 onClick={() => {
                   setVenueId("");
                   setVenueName("");
-                  setLinked(false);
                   setDevices([]);
                   setDeviceId("");
                   setNow(null);
@@ -551,14 +571,12 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
       {/* 1) Spotify ühendus */}
       <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
         <h2 className="text-lg font-semibold mb-2">1) Connect Spotify</h2>
-        <p className="text-sm text-gray-400 mb-3">
-          Staatus: {linked ? "✅ lingitud" : "❌ linkimata"}
-        </p>
-        <Button
-          onClick={connectSpotify}
-          disabled={!venueId}
-          className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-        >
+          <p className="text-sm text-gray-400 mb-3">
+            Staatus: {isLinked ? "✅ lingitud" : "❌ linkimata"}
+          </p>
+
+        <Button onClick={connectSpotify} variant="outline"
+          className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">
           Connect Spotify
         </Button>
         {!venueId && (
@@ -574,36 +592,28 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
           2) Playback device (desktop/mobiili Spotify)
         </h2>
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 mb-3">
-            <Button
-              onClick={refreshDevices}
-              variant="outline"
-              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-              disabled={!linked || !venueId || loading}
-            >
-              Refresh devices
-            </Button>
-
+          <Button onClick={refreshDevices} variant="outline"
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+            disabled={!adminToken || !venueId || loading}>
+            Refresh devices
+          </Button>
             <select
-              className="min-w-[200px] flex-1 max-w-full bg-black border border-gray-700 rounded-lg px-3 py-2 sm:flex-1 w-full"
+              className="bg-black border border-gray-700 rounded-lg px-3 py-2"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
-              disabled={!linked || devices.length === 0}
+              disabled={!adminToken || devices.length === 0}
             >
               <option value="">-- vali seade --</option>
-              {devices.map((d) => (
+              {devices.map(d => (
                 <option key={d.id} value={d.id}>
-                  {d.name || d.type}
-                  {d.is_active ? " (active)" : ""}
+                  {(d.name || d.type) + (d.is_active ? " (active)" : "")}
                 </option>
               ))}
             </select>
 
-            <Button
-              onClick={selectPlaybackDevice}
-              variant="outline"
-              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-              disabled={!deviceId}
-            >
+            <Button onClick={selectPlaybackDevice} variant="outline"
+              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+              disabled={!adminToken || !deviceId}>
               Use this device
             </Button>
 
