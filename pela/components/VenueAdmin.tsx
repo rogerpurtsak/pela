@@ -428,80 +428,93 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
 
 
 
-  return (
-  <div className="bg-[#222222]">
-    <div className="max-w-2xl mx-auto px-4 py-8 bg-[#212121]">
+return (
+  <div className="min-h-[100dvh] bg-[#141414]">
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      {/* Hero */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
         className="text-center mb-8"
       >
-        <div className="mb-6">
-          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 backdrop-blur">
-            DJ paneel
-          </span>
-
-          <h1 className="mt-3 text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-            <span className="bg-gradient-to-r from-[#1DB954] via-emerald-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_1px_6px_rgba(29,185,84,0.25)]">
-              type&nbsp;shift
-            </span>
-          </h1>
-
-          <p className="mt-3 text-sm md:text-base text-gray-300">
-            Loo QR-kood ja halda enda paneeli
-          </p>
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 backdrop-blur-sm">
+          DJ paneel
         </div>
+
+        <h1 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+          <span className="bg-gradient-to-r from-[#1DB954] via-emerald-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_1px_6px_rgba(29,185,84,0.25)]">
+            type&nbsp;shift
+          </span>
+        </h1>
+
+        <p className="mt-3 text-sm md:text-base text-gray-300">
+          Loo QR-kood ja halda oma paneeli
+        </p>
       </motion.div>
-        <Button variant="outline" className="border-gray-700 mb-10 hover:bg-[#cbe4d4] hover:text-black hover:scale-105 hover:rounded-2xl cursor-pointer" onClick={goAudience}>
+
+      {/* Back button */}
+      <div className="mb-8">
+        <Button
+          variant="outline"
+          className="border-gray-700 hover:bg-[#cbe4d4] hover:text-black hover:scale-[1.02] hover:rounded-xl transition-all"
+          onClick={goAudience}
+        >
           ← Tagasi queue’sse
         </Button>
+      </div>
 
-
-      {/* admin login mdea juhul kui vaja on */}
-
-      {/* Admin (PIN) plokk – lisa see näiteks QR-kaardi järel */}
-            {venueId && (
-              <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
-                <h2 className="text-lg font-semibold mb-2">Admin (PIN)</h2>
-
-                {!adminToken && (
-                  <div className="flex gap-2 items-center mb-3">
-                    <Input
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      placeholder="Sisesta PIN"
-                      className="bg-[#0e0e0e] border-gray-700 text-white placeholder-gray-500 caret-white"
-                    />
-                    {!hasPin && (
-                      <Button onClick={setPinFirstTime} className="text-black bg-white hover:bg-[#cbe4d4]">
-                        Set PIN
-                      </Button>
-                    )}
-                    <Button onClick={adminLogin} className="text-black bg-white hover:bg-[#cbe4d4]">
-                      Login
-                    </Button>
-                  </div>
-                )}
-
-                {adminToken && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-emerald-400">Oled sisse logitud.</span>
-              <Button onClick={adminLogout} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4]">
-                Logout
-              </Button>
+      {/* Admin PIN */}
+      {venueId && (
+        <Card className="bg-[#121212] border-gray-800 p-6 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Admin (PIN)</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Admin-toimingud on lubatud ainult PIN-iga sisseloginule.
+              </p>
             </div>
-          )}
+            {!adminToken ? (
+              <div className="flex w-full sm:w-auto sm:min-w-[420px] items-center gap-2">
+                <Input
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Sisesta PIN"
+                  className="bg-[#0e0e0e] border-gray-700 text-white placeholder-gray-500 caret-white"
+                />
+                {!hasPin && (
+                  <Button
+                    onClick={setPinFirstTime}
+                    className="text-black bg-white hover:bg-[#cbe4d4]"
+                  >
+                    Set PIN
+                  </Button>
+                )}
+                <Button onClick={adminLogin} className="text-black bg-white hover:bg-[#cbe4d4]">
+                  Login
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-emerald-400">Oled sisse logitud</span>
+                <Button
+                  onClick={adminLogout}
+                  variant="outline"
+                  className="text-black bg-white hover:bg-[#cbe4d4]"
+                >
+                  Logout
+                </Button>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 
-
-      {/* 0) Venue seaded + QR */}
-      <Card className="bg-black border-gray-800 p-6 mb-6">
-        <div className="space-y-4">
+      {/* Venue + QR */}
+      <Card className="bg-[#0f0f0f] border-gray-800 p-6 mb-6">
+        <div className="space-y-5">
           <div>
-            <label className="text-sm text-gray-400 mb-2 block">
-              Koha nimi (valikuline)
-            </label>
+            <label className="text-sm text-gray-400 mb-2 block">Koha nimi (valikuline)</label>
             <Input
               value={venueName}
               onChange={(e) => setVenueName(e.target.value)}
@@ -513,217 +526,245 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
           {!venueId ? (
             <Button
               onClick={generateVenueId}
-              className="w-full text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
+              className="w-full text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all"
             >
               <Music className="w-4 h-4 mr-2" />
               Genereeri uus venue ID
             </Button>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-400 mb-2 block">Venue ID</label>
-                <div className="bg-[#0e0e0e] border border-gray-700 rounded-lg p-3 font-mono text-sm break-all text-white">
-                  {venueId}
+            <div className="grid grid-cols-1 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block">Venue ID</label>
+                  <div className="bg-[#0e0e0e] border border-gray-700 rounded-lg p-3 font-mono text-sm break-all text-white">
+                    {venueId}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 mb-2 block">Audience URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={venueUrl}
+                      readOnly
+                      className="bg-[#0e0e0e] border-gray-700 font-mono text-sm text-white"
+                    />
+                    <Button
+                      onClick={handleCopy}
+                      variant="outline"
+                      className="border-gray-700 hover:bg-[#cbe4d4] hover:text-black hover:scale-[1.02] hover:rounded-xl transition-all"
+                      aria-label="Kopeeri link"
+                      title="Kopeeri link"
+                    >
+                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm text-gray-400 mb-2 block">Audience URL</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={venueUrl}
-                    readOnly
-                    className="bg-[#0e0e0e] border-gray-700 font-mono text-sm text-white placeholder-gray-500 caret-white"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-[280px,1fr] gap-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-6">
+                  <QRCodeSVG id="qr-code" value={venueUrl} size={256} level="H" includeMargin className="mx-auto" />
+                  {venueName && (
+                    <p className="text-center mt-4 text-black font-semibold">{venueName}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3">
                   <Button
-                    onClick={handleCopy}
+                    onClick={handleDownloadQR}
                     variant="outline"
-                    className="border-gray-700 text-black hover:bg-[#cbe4d4] hover:text-black hover:scale-105 hover:rounded-2xl cursor-pointer"
+                    className="w-full border-gray-700 hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all"
                   >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    <Download className="w-4 h-4 mr-2" />
+                    Lae QR-kood alla (PNG)
+                  </Button>
+
+                  <div className="bg-[#0d0d0d] border border-gray-800 rounded-xl p-4">
+                    <h3 className="text-sm font-semibold mb-2 text-emerald-400">Kuidas kasutada</h3>
+                    <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+                      <li>Prindi või kuva QR-kood üritusel</li>
+                      <li>Külastajad skaneerivad QR-koodi telefoniga</li>
+                      <li>Avatakse Pela sinu venue’ga</li>
+                      <li>Külastajad saavad hääletada ja lisada lugusid</li>
+                    </ol>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      setVenueId("");
+                      setVenueName("");
+                      setDevices([]);
+                      setDeviceId("");
+                      setNow(null);
+                      setHasPin(false);
+                      setAdminToken(null);
+                    }}
+                    variant="ghost"
+                    className="w-full text-gray-400 hover:text-white hover:bg-white/5"
+                  >
+                    Loo uus venue
                   </Button>
                 </div>
               </div>
-
-
-              <div className="bg-white p-6 rounded-lg">
-                <QRCodeSVG
-                  id="qr-code"
-                  value={venueUrl}
-                  size={256}
-                  level="H"
-                  includeMargin
-                  className="mx-auto"
-                />
-                {venueName && (
-                  <p className="text-center mt-4 text-black font-semibold">
-                    {venueName}
-                  </p>
-                )}
-              </div>
-
-              <Button onClick={handleDownloadQR} variant="outline" className="w-full border-gray-700 hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">
-                <Download className="w-4 h-4 mr-2" />
-                Lae QR-kood alla (PNG)
-              </Button>
-
-              <div className="bg-[#0e0e0e] border border-gray-700 rounded-lg p-4">
-                <h3 className="text-sm font-semibold mb-2 text-[#1DB954]">
-                  Kuidas kasutada:
-                </h3>
-                <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
-                  <li>Prindi või kuva QR-kood oma uritusel</li>
-                  <li>Külastajad skaneerivad QR-koodi oma telefoniga</li>
-                  <li>Avatakse pela sinu venue’ga</li>
-                  <li>Külastajad saavad hääletada ja lisada lugusid</li>
-                </ol>
-              </div>
-
-              <Button
-                onClick={() => {
-                  setVenueId("");
-                  setVenueName("");
-                  setDevices([]);
-                  setDeviceId("");
-                  setNow(null);
-                  setHasPin(false);
-                  setAdminToken(null);
-                }}
-                variant="ghost"
-                className="w-full text-gray-500 cursor-pointer"
-              >
-                Loo uus venue
-              </Button>
             </div>
           )}
         </div>
       </Card>
 
-      {/* 1) Spotify ühendus */}
-      <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
-        <h2 className="text-lg font-semibold mb-2">1) Connect Spotify</h2>
-        <p className="text-sm text-gray-400 mb-3">
-          Staatus: {isLinked ? "✅ lingitud" : "❌ linkimata"}
-        </p>
-
-        <Button onClick={connectSpotify} variant="outline"
-          className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">
-          Connect Spotify
-        </Button>
+      {/* Connect Spotify */}
+      <Card className="bg-[#121212] border-gray-800 p-6 mb-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-white">1) Connect Spotify</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Staatus: {isLinked ? "lingitud" : "linkimata"}
+            </p>
+          </div>
+          <div className="shrink-0">
+            <Button
+              onClick={connectSpotify}
+              variant="outline"
+              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all"
+              disabled={!venueId}
+            >
+              Connect Spotify
+            </Button>
+          </div>
+        </div>
         {!venueId && (
-          <p className="text-xs text-gray-500 mt-2">
-            Genereeri kõigepealt venue ID.
-          </p>
+          <p className="text-xs text-gray-500 mt-3">Genereeri kõigepealt venue ID.</p>
         )}
       </Card>
 
-      {/* 2) Seadme valik */}
-      <Card className="bg-[#1a1a1a] border-gray-800 p-6 mb-6 text-[#1DB954]">
-        <h2 className="text-lg font-semibold mb-2">
+      {/* Playback device */}
+      <Card className="bg-[#121212] border-gray-800 p-6 mb-6">
+        <h2 className="text-base font-semibold text-white mb-3">
           2) Playback device (desktop/mobiili Spotify)
         </h2>
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 mb-3">
-          <Button onClick={refreshDevices} variant="outline"
-            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-            disabled={!adminToken || !venueId || loading}>
+
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 mb-3">
+          <Button
+            onClick={refreshDevices}
+            variant="outline"
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all disabled:opacity-50"
+            disabled={!adminToken || !venueId || loading}
+          >
             Refresh devices
           </Button>
-            <select
-              className="bg-black border border-gray-700 rounded-lg px-3 py-2"
-              value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value)}
-              disabled={!adminToken || devices.length === 0}
-            >
-              <option value="">-- vali seade --</option>
-              {devices.map(d => (
-                <option key={d.id} value={d.id}>
-                  {(d.name || d.type) + (d.is_active ? " (active)" : "")}
-                </option>
-              ))}
-            </select>
 
-            <Button onClick={selectPlaybackDevice} variant="outline"
-              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-              disabled={!adminToken || !deviceId}>
-              Use this device
-            </Button>
+          <select
+            className="bg-black border border-gray-700 rounded-lg px-3 py-2 text-white disabled:opacity-50"
+            value={deviceId}
+            onChange={(e) => setDeviceId(e.target.value)}
+            disabled={!adminToken || devices.length === 0}
+            aria-label="Vali seadme ID"
+          >
+            <option value="">-- vali seade --</option>
+            {devices.map((d) => (
+              <option key={d.id} value={d.id}>
+                {(d.name || d.type) + (d.is_active ? " (active)" : "")}
+              </option>
+            ))}
+          </select>
 
-            <Button
-              onClick={openSpotifyApp}
-              variant="outline"
-              className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-            >
-              Open Spotify app
-            </Button>
-          </div>
+          <Button
+            onClick={selectPlaybackDevice}
+            variant="outline"
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all disabled:opacity-50"
+            disabled={!adminToken || !deviceId}
+          >
+            Use this device
+          </Button>
 
-        <p className="text-xs text-gray-500">
-          Ava Spotify äpp ja hoia seade online/active.
-        </p>
+          <Button
+            onClick={openSpotifyApp}
+            variant="outline"
+            className="shrink-0 whitespace-nowrap text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all"
+          >
+            Open Spotify app
+          </Button>
+        </div>
+
+        <p className="text-xs text-gray-500">Ava Spotify äpp ja hoia seade online/active.</p>
       </Card>
 
-        <Card className="bg-[#1a1a1a] border-gray-800 p-6 text-[#1DB954]">
-          {/* Päis + Lisa laul nupp */}
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">3) Control</h2>
-            <Button
-              onClick={() => setIsAddOpen(true)}
-              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-            >
-              + Lisa laul
-            </Button>
-          </div>
+      {/* Control */}
+      <Card className="bg-[#121212] border-gray-800 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-white">3) Control</h2>
+          <Button
+            onClick={() => setIsAddOpen(true)}
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all"
+          >
+            + Lisa laul
+          </Button>
+        </div>
 
-          {/* Play next / Reload */}
-          <div className="flex gap-2 mb-3">
-            <Button
-              onClick={playNext}
-              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-              disabled={loading || !venueId}
-            >
-              Play next
-            </Button>
-            <Button
-              onClick={loadNow}
-              variant="outline"
-              className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer"
-              disabled={loading || !venueId}
-            >
-              Reload Now Playing
-            </Button>
-              {adminToken ? (
-                <PlaybackControls venueId={venueId} isPlaying={!!nowLive?.is_playing} adminToken={adminToken} />
-              ) : null}
-          </div>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Button
+            onClick={playNext}
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all disabled:opacity-50"
+            disabled={loading || !venueId}
+          >
+            Play next
+          </Button>
 
-          {/* info-kaart (kasuta live item'i infot kui olemas) */}
-          <NowPlayingCard
-            song={
-              nowLive?.item
-                ? {
-                    title: nowLive.item.name,
-                    artist: nowLive.item.artists,
-                    albumArt: nowLive.item.albumArt,
-                  }
-                : (now || null) // fallback sinu olemasolevale now-playing andmele
-            }
-          />
+          <Button
+            onClick={loadNow}
+            variant="outline"
+            className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-xl transition-all disabled:opacity-50"
+            disabled={loading || !venueId}
+          >
+            Reload Now Playing
+          </Button>
 
-          {/* progress ribana + ajad (kui live item olemas) */}
-          {nowLive?.item && (
+          {adminToken ? (
+            <div className="ml-auto">
+              <PlaybackControls
+                venueId={venueId}
+                isPlaying={!!nowLive?.is_playing}
+                adminToken={adminToken}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <NowPlayingCard
+          song={
+            nowLive?.item
+              ? {
+                  title: nowLive.item.name,
+                  artist: nowLive.item.artists,
+                  albumArt: nowLive.item.albumArt,
+                }
+              : now || null
+          }
+        />
+
+        {nowLive?.item && (
+          <div className="mt-3">
             <PlaybackProgress
               isPlaying={nowLive.is_playing}
               startedAt={nowLive.startedAt}
               durationMs={nowLive.duration_ms}
             />
-          )}
+          </div>
+        )}
 
+        <div className="mt-5">
           {nextSong ? (
-            <div className="bg-black/40 border border-gray-800 rounded-2xl p-4 mb-2">
+            <div className="bg-black/40 border border-gray-800 rounded-xl p-4 mb-2">
               <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">Next up</div>
               <div className="flex items-center gap-3">
                 {nextSong.albumArt ? (
-                  <img src={nextSong.albumArt} width={48} height={48} className="rounded-md" />
+                  <img
+                    src={nextSong.albumArt}
+                    width={48}
+                    height={48}
+                    className="rounded-md"
+                    alt="Album art"
+                  />
                 ) : null}
                 <div className="min-w-0">
                   <div className="text-white font-medium truncate">{nextSong.title}</div>
@@ -734,16 +775,16 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
           ) : (
             <div className="text-sm text-gray-500">Järgnevat lugu pole järjekorras.</div>
           )}
+        </div>
 
-          <div className="mt-4 text-sm text-gray-400">
-            <div>
-              see link jaga rahvale kui qr ei toota:{" "}
-              <a href={audienceUrl} className="text-[#1DB954] underline">
-                {audienceUrl || "—"}
-              </a>
-            </div>
-          </div>
-        </Card>
+        <div className="mt-4 text-sm text-gray-400">
+          <span className="mr-1">Kui QR ei tööta, jaga linki:</span>
+          <a href={audienceUrl} className="text-emerald-400 hover:text-emerald-300 underline break-all">
+            {audienceUrl || "—"}
+          </a>
+        </div>
+      </Card>
+
       <AddSongSheet
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
@@ -751,6 +792,7 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
         cooldownMinutes={cooldownMinutes}
       />
     </div>
-    </div>
-  );
+  </div>
+);
 }
+
